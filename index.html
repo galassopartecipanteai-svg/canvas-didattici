@@ -1,710 +1,458 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Geometria Neon: Enti Fondamentali</title>
-    <!-- Tailwind CSS per layout UI -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Didattici - Laboratorio Digitale Interattivo</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Three.js per rendering 3D -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- OrbitControls per ruotare/ruotare la telecamera -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <!-- FontAwesome per Icone -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #090a0f;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
-        canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
-
-        /* Effetti Glow Personalizzati */
-        .neon-title {
-            text-shadow: 0 0 10px rgba(56, 189, 248, 0.8), 0 0 20px rgba(56, 189, 248, 0.4);
-        }
-
-        .neon-button {
-            transition: all 0.2s ease;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-        }
-
-        .neon-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
-        }
-
-        .neon-button.active {
-            background-color: rgba(56, 189, 248, 0.25) !important;
-            border-color: #38bdf8 !important;
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.8) !important;
-            color: #ffffff !important;
-        }
-
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Custom styling per Range Input Slider */
-        input[type=range] {
-            -webkit-appearance: none;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            height: 8px;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 20px;
-            width: 20px;
-            border-radius: 50%;
-            background: #38bdf8;
-            cursor: pointer;
-            box-shadow: 0 0 10px #38bdf8;
-        }
-
-        /* Animazioni di Pulsazione */
-        @keyframes pulseGlow {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
-        }
-
-        .pulse-glow {
-            animation: pulseGlow 2s infinite ease-in-out;
-        }
-    </style>
-</head>
-<body class="text-slate-100 overflow-hidden">
-
-    <!-- Container Canvases ThreeJS -->
-    <div id="canvas-container" class="absolute inset-0 z-0"></div>
-
-    <!-- UI Overlay Top Banner -->
-    <div class="absolute top-4 left-4 right-4 z-10 flex flex-col md:flex-row justify-between items-center pointer-events-none gap-4">
-        <div class="glass-panel px-6 py-3 rounded-2xl pointer-events-auto flex items-center gap-3 border border-cyan-500/30">
-            <div class="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-xl font-bold border border-cyan-400/50">
-                <i class="fa-solid fa-cubes-stacked"></i>
-            </div>
-            <div>
-                <h1 class="text-xl font-bold tracking-wide text-cyan-300 neon-title">Geometria Neon 3D</h1>
-                <p class="text-xs text-slate-400">Laboratorio Enti Fondamentali: Punto, Retta, Piano</p>
-            </div>
-        </div>
-
-        <!-- Banner Spiegazione Concetto Dinamico -->
-        <div id="info-card" class="glass-panel px-6 py-3 rounded-2xl pointer-events-auto max-w-xl text-sm border border-slate-700/60 transition-all duration-300">
-            <div class="flex items-center gap-2 text-cyan-400 font-semibold mb-1">
-                <i class="fa-solid fa-circle-info"></i>
-                <span id="info-title">Esplora lo Spazio 3D</span>
-            </div>
-            <p id="info-desc" class="text-slate-300 text-xs leading-relaxed">
-                Ruota il <b>Piano &alpha;</b> trascinando con il mouse/touch. Seleziona uno strumento in basso per posizionare punti o tracciare rette luminose.
-            </p>
-        </div>
-    </div>
-
-    <!-- Barra degli Strumenti Principale (Bottom Dock) -->
-    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 w-11/12 max-w-3xl">
-        <div class="glass-panel p-3 md:p-4 rounded-3xl flex flex-wrap justify-center items-center gap-2 md:gap-4 border border-cyan-500/30 shadow-2xl">
-            
-            <!-- Modalità: Seleziona / Accendi -->
-            <button id="btn-select" class="neon-button active flex flex-col md:flex-row items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800/80 border border-slate-600 text-slate-300 text-xs md:text-sm font-medium">
-                <i class="fa-solid fa-lightbulb text-amber-400 text-lg"></i>
-                <span>Accendi / Ispeziona</span>
-            </button>
-
-            <!-- Modalità: Aggiungi Punto -->
-            <button id="btn-add-point" class="neon-button flex flex-col md:flex-row items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800/80 border border-slate-600 text-slate-300 text-xs md:text-sm font-medium">
-                <i class="fa-solid fa-location-dot text-cyan-400 text-lg"></i>
-                <span>+ Punto</span>
-            </button>
-
-            <!-- Modalità: Traccia Retta -->
-            <button id="btn-add-line" class="neon-button flex flex-col md:flex-row items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800/80 border border-slate-600 text-slate-300 text-xs md:text-sm font-medium">
-                <i class="fa-solid fa-ruler-combined text-fuchsia-400 text-lg"></i>
-                <span>+ Retta (2 Punti)</span>
-            </button>
-
-            <div class="h-8 w-px bg-slate-700 hidden md:block"></div>
-
-            <!-- Pulsante Reset Completo -->
-            <button id="btn-clear" class="neon-button flex flex-col md:flex-row items-center gap-2 px-4 py-2.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/40 text-red-300 text-xs md:text-sm font-medium">
-                <i class="fa-solid fa-trash-can text-lg"></i>
-                <span>Pulisci Scena</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- Pannello di Controllo Laterale: Densità Infiniti Punti -->
-    <div class="absolute right-4 top-1/2 -translate-y-1/2 z-10 hidden sm:block">
-        <div class="glass-panel p-4 rounded-3xl flex flex-col items-center gap-4 border border-cyan-500/20 max-w-xs">
-            <div class="text-center">
-                <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider block mb-1">
-                    <i class="fa-solid fa-infinity mr-1"></i> Concetto Chiave
-                </span>
-                <h3 class="text-sm font-semibold text-white">Densità Punti della Retta</h3>
-                <p class="text-[11px] text-slate-400 mt-1">Una retta è formata da <b>infiniti punti</b> continui.</p>
-            </div>
-
-            <div class="w-full flex flex-col gap-2">
-                <div class="flex justify-between text-xs font-mono text-slate-300">
-                    <span>Pochi Punti</span>
-                    <span id="density-val" class="text-cyan-400 font-bold">15</span>
-                    <span>Infiniti</span>
-                </div>
-                <input type="range" id="slider-density" min="5" max="120" value="15" class="w-full cursor-pointer">
-            </div>
-
-            <!-- Interruttore Trasparenza Piano -->
-            <button id="btn-toggle-plane" class="w-full py-2 px-3 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-300 text-xs flex items-center justify-between hover:border-cyan-500 transition">
-                <span><i class="fa-solid fa-layer-group text-cyan-400 mr-2"></i>Piano &alpha; Visibile</span>
-                <span id="plane-status-badge" class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">SI</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- Messaggio Feedback Notifiche Fluttuante -->
-    <div id="toast-msg" class="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 pointer-events-none opacity-0 transition-opacity duration-300 glass-panel border border-cyan-400/50 text-cyan-200 px-5 py-2.5 rounded-full text-sm shadow-xl flex items-center gap-2">
-        <i class="fa-solid fa-sparkles text-amber-300"></i>
-        <span id="toast-text">Messaggio di istruzione</span>
-    </div>
-
-    <!-- ThreeJS logic script -->
     <script>
-        // --- INIZIALIZZAZIONE SCENA THREE.JS ---
-        let scene, camera, renderer, controls;
-        let planeMesh, planeGrid;
-        
-        // Collezioni oggetti geometrici
-        let pointsList = []; // { id, mesh, glowMesh, label, coords, isGlowing }
-        let linesList = [];  // { id, mesh, pointA, pointB, subPointsMesh, isGlowing }
-        
-        // Gestione Stato Interazione
-        let currentMode = 'select'; // 'select', 'add-point', 'add-line'
-        let selectedPointsForLine = [];
-        let activeSelectedObject = null;
-        let pointCounter = 0;
-        let lineCounter = 0;
-
-        // Raycasting per selezione con Mouse/Touch
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-
-        // Parametri Materiali Neon
-        const COLORS = {
-            plane: 0x0f172a,
-            planeGrid: 0x1e293b,
-            planeGlow: 0x06b6d4,
-            pointNormal: 0x38bdf8,
-            pointGlow: 0xf59e0b, // Colore calore lampadina/neon acceso
-            lineNormal: 0x818cf8,
-            lineGlow: 0xf43f5e
-        };
-
-        window.onload = function() {
-            initScene();
-            setupEventListeners();
-            createInitialGeometry();
-            animate();
-            showToast("Benvenuto! Fai click sul piano per esplorare la geometria.");
-        };
-
-        function initScene() {
-            const container = document.getElementById('canvas-container');
-
-            // Scena
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x07090e);
-            scene.fog = new THREE.FogExp2(0x07090e, 0.025);
-
-            // Telecamera
-            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 12, 16);
-
-            // Renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            container.appendChild(renderer.domElement);
-
-            // Orbit Controls per orientare lo spazio
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.maxPolarAngle = Math.PI / 2 + 0.1; // Non scendere troppo sotto il piano
-            controls.minDistance = 5;
-            controls.maxDistance = 40;
-
-            // Luci della scena
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(10, 20, 10);
-            scene.add(dirLight);
-
-            // Creazione del Piano Alpha (Piano &alpha;)
-            createPlaneAlpha();
-        }
-
-        // --- CREAZIONE DEL PIANO FONDAMENTALE ---
-        function createPlaneAlpha() {
-            // Geometria del piano principale
-            const planeGeo = new THREE.PlaneGeometry(20, 20);
-            const planeMat = new THREE.MeshPhongMaterial({
-                color: COLORS.plane,
-                transparent: true,
-                opacity: 0.65,
-                side: THREE.DoubleSide,
-                depthWrite: false
-            });
-
-            planeMesh = new THREE.Mesh(planeGeo, planeMat);
-            planeMesh.rotation.x = -Math.PI / 2;
-            planeMesh.name = "PlaneAlpha";
-            scene.add(planeMesh);
-
-            // Griglia sul piano per rendere l'idea della superficie continua
-            planeGrid = new THREE.GridHelper(20, 20, 0x38bdf8, 0x1e293b);
-            planeGrid.position.y = 0.01;
-            scene.add(planeGrid);
-
-            // Bordi illuminati per il piano
-            const edges = new THREE.EdgesGeometry(planeGeo);
-            const lineMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 2 });
-            const wireframe = new THREE.LineSegments(edges, lineMat);
-            wireframe.rotation.x = -Math.PI / 2;
-            scene.add(wireframe);
-
-            // Luce di Bagliore (Glow) del piano che reagisce quando il piano è selezionato
-            const planeGlowGeo = new THREE.PlaneGeometry(20.5, 20.5);
-            const planeGlowMat = new THREE.MeshBasicMaterial({
-                color: COLORS.planeGlow,
-                transparent: true,
-                opacity: 0.0,
-                side: THREE.DoubleSide
-            });
-            const planeGlow = new THREE.Mesh(planeGlowGeo, planeGlowMat);
-            planeGlow.rotation.x = -Math.PI / 2;
-            planeGlow.position.y = -0.02;
-            planeMesh.add(planeGlow);
-            planeMesh.userData = { glowMesh: planeGlow };
-        }
-
-        // --- CREAZIONE ENTI GEOMETRICI ---
-
-        // 1. PUNTO (Sfera luminosa a forma di lampadina LED)
-        function addPoint(x, z, labelName = null) {
-            pointCounter++;
-            const name = labelName || String.fromCharCode(64 + (pointCounter % 26 || 26));
-
-            // Sfera punto base
-            const geo = new THREE.SphereGeometry(0.3, 32, 32);
-            const mat = new THREE.MeshStandardMaterial({
-                color: COLORS.pointNormal,
-                emissive: COLORS.pointNormal,
-                emissiveIntensity: 0.5,
-                roughness: 0.2
-            });
-
-            const pointMesh = new THREE.Mesh(geo, mat);
-            pointMesh.position.set(x, 0.3, z);
-            scene.add(pointMesh);
-
-            // Alone di bagliore (Glow halo)
-            const glowGeo = new THREE.SphereGeometry(0.55, 16, 16);
-            const glowMat = new THREE.MeshBasicMaterial({
-                color: COLORS.pointGlow,
-                transparent: true,
-                opacity: 0.0
-            });
-            const glowMesh = new THREE.Mesh(glowGeo, glowMat);
-            pointMesh.add(glowMesh);
-
-            const pointObj = {
-                id: 'point_' + Date.now() + '_' + Math.random(),
-                name: name,
-                mesh: pointMesh,
-                glowMesh: glowMesh,
-                position: new THREE.Vector3(x, 0, z),
-                isGlowing: false
-            };
-
-            pointMesh.userData = { type: 'point', refObj: pointObj };
-            pointsList.push(pointObj);
-
-            // Effetto rimbalzo creazione
-            pointMesh.scale.set(0.1, 0.1, 0.1);
-            let s = 0.1;
-            const timer = setInterval(() => {
-                s += 0.15;
-                pointMesh.scale.set(s, s, s);
-                if (s >= 1) clearInterval(timer);
-            }, 16);
-
-            return pointObj;
-        }
-
-        // 2. RETTA (Infinità di punti / Segmento prolungato)
-        function createLineBetweenPoints(ptA, ptB) {
-            lineCounter++;
-            const lineName = "r" + lineCounter;
-
-            // Vettore direzione della retta infinitamente prolungata nello spazio del piano
-            const dir = new THREE.Vector3().subVectors(ptB.position, ptA.position).normalize();
-            
-            // Estendiamo i due capi della retta per simulare l'infinito del piano
-            const farA = ptA.position.clone().addScaledVector(dir, -25);
-            const farB = ptA.position.clone().addScaledVector(dir, 25);
-
-            // Geometria tubo/linea
-            const path = new THREE.LineCurve3(farA, farB);
-            const tubeGeo = new THREE.TubeGeometry(path, 64, 0.08, 8, false);
-            const tubeMat = new THREE.MeshStandardMaterial({
-                color: COLORS.lineNormal,
-                emissive: COLORS.lineNormal,
-                emissiveIntensity: 0.4
-            });
-
-            const lineMesh = new THREE.Mesh(tubeGeo, tubeMat);
-            lineMesh.position.y = 0.05; // Adagiata appena sopra il piano
-            scene.add(lineMesh);
-
-            // Gruppo per i sottopunti (Dimostrazione di "Infiniti Punti")
-            const subPointsGroup = new THREE.Group();
-            lineMesh.add(subPointsGroup);
-
-            const lineObj = {
-                id: 'line_' + Date.now(),
-                name: lineName,
-                mesh: lineMesh,
-                ptA: ptA,
-                ptB: ptB,
-                farA: farA,
-                farB: farB,
-                subPointsGroup: subPointsGroup,
-                isGlowing: false
-            };
-
-            lineMesh.userData = { type: 'line', refObj: lineObj };
-            linesList.push(lineObj);
-
-            // Genera i punti densi lungo la retta
-            updateLinePointsDensity(lineObj, parseInt(document.getElementById('slider-density').value));
-
-            return lineObj;
-        }
-
-        // Genera i micro-punti lungo la retta per mostrare la densità
-        function updateLinePointsDensity(lineObj, count) {
-            const group = lineObj.subPointsGroup;
-            // Pulizia vecchi micro-punti
-            while(group.children.length > 0){ 
-                group.remove(group.children[0]); 
-            }
-
-            const p1 = lineObj.farA;
-            const p2 = lineObj.farB;
-
-            const pointGeo = new THREE.SphereGeometry(0.1, 8, 8);
-            const pointMat = new THREE.MeshBasicMaterial({
-                color: lineObj.isGlowing ? COLORS.pointGlow : 0x60a5fa,
-                transparent: true,
-                opacity: 0.8
-            });
-
-            for (let i = 0; i <= count; i++) {
-                const alpha = i / count;
-                const pos = new THREE.Vector3().lerpVectors(p1, p2, alpha);
-                const microPoint = new THREE.Mesh(pointGeo, pointMat);
-                microPoint.position.copy(pos);
-                group.add(microPoint);
-            }
-        }
-
-        // --- GEOMETRIA INIZIALE DI BENVENUTO ---
-        function createInitialGeometry() {
-            const p1 = addPoint(-4, -2, 'A');
-            const p2 = addPoint(4, 3, 'B');
-            createLineBetweenPoints(p1, p2);
-        }
-
-        // --- LOGICA REAZIONE A CATENA ED EFFETTO LAMPADINA ---
-
-        function toggleGlowPoint(pointObj, activate = true) {
-            pointObj.isGlowing = activate;
-            if (activate) {
-                pointObj.mesh.material.emissive.setHex(COLORS.pointGlow);
-                pointObj.mesh.material.color.setHex(COLORS.pointGlow);
-                pointObj.glowMesh.material.opacity = 0.8;
-            } else {
-                pointObj.mesh.material.emissive.setHex(COLORS.pointNormal);
-                pointObj.mesh.material.color.setHex(COLORS.pointNormal);
-                pointObj.glowMesh.material.opacity = 0;
-            }
-        }
-
-        function toggleGlowLine(lineObj, activate = true) {
-            lineObj.isGlowing = activate;
-            if (activate) {
-                lineObj.mesh.material.emissive.setHex(COLORS.lineGlow);
-                lineObj.mesh.material.color.setHex(COLORS.lineGlow);
-            } else {
-                lineObj.mesh.material.emissive.setHex(COLORS.lineNormal);
-                lineObj.mesh.material.color.setHex(COLORS.lineNormal);
-            }
-            updateLinePointsDensity(lineObj, parseInt(document.getElementById('slider-density').value));
-        }
-
-        function toggleGlowPlane(activate = true) {
-            const glowMesh = planeMesh.userData.glowMesh;
-            glowMesh.material.opacity = activate ? 0.35 : 0.0;
-        }
-
-        // Reset completo dello stato di accensione luminosa
-        function resetAllGlows() {
-            pointsList.forEach(p => toggleGlowPoint(p, false));
-            linesList.forEach(l => toggleGlowLine(l, false));
-            toggleGlowPlane(false);
-        }
-
-        // --- SELEZIONE INTERATTIVA CON LOGICA DIDATTICA (LAMPADINA) ---
-        function handleObjectSelection(object) {
-            resetAllGlows();
-
-            if (!object) {
-                updateInfoCard("Piano α (Spazio Geometrico)", 
-                    "Il piano è una superficie illimitata e priva di spessore. Contiene infiniti punti e infinite rette.");
-                return;
-            }
-
-            const data = object.userData;
-
-            // 1. SELEZIONE PUNTO
-            if (data.type === 'point') {
-                const pt = data.refObj;
-                toggleGlowPoint(pt, true);
-
-                // Trova le rette che passano per questo punto
-                const parentLines = linesList.filter(l => l.ptA === pt || l.ptB === pt);
-                
-                if (parentLines.length > 0) {
-                    // Reazione a catena: il punto illumina le sue rette e il piano!
-                    parentLines.forEach(l => toggleGlowLine(l, true));
-                    toggleGlowPlane(true);
-                    
-                    updateInfoCard(`Punto ${pt.name} (Acceso!)`, 
-                        `Il punto <b>${pt.name}</b> appartiene alla retta <b>r</b>. Poiché la retta giace sul piano &alpha;, anche il punto <b>${pt.name}</b> appartiene al piano &alpha;! <br><span class='text-amber-300 font-bold'>Relazione: ${pt.name} &isin; r e r &subset; &alpha; &rArr; ${pt.name} &isin; &alpha;</span>`);
-                } else {
-                    toggleGlowPlane(true);
-                    updateInfoCard(`Punto Isolato ${pt.name}`, 
-                        `Un punto individua una posizione esatta nello spazio. Da questo punto possono passare <b>infinite rette</b> (Fascio di rette).`);
-                }
-            }
-
-            // 2. SELEZIONE RETTA
-            else if (data.type === 'line') {
-                const line = data.refObj;
-                toggleGlowLine(line, true);
-                
-                // Accendi a catena i punti costituenti e il piano!
-                toggleGlowPoint(line.ptA, true);
-                toggleGlowPoint(line.ptB, true);
-                toggleGlowPlane(true);
-
-                updateInfoCard(`Retta ${line.name} (Illuminata)`, 
-                    `La retta è formata da <b>infiniti punti allineati</b>. Selezionando la retta si accendono i suoi punti <b>${line.ptA.name}</b> e <b>${line.ptB.name}</b> e si illumina il piano su cui giace interamente.`);
-            }
-
-            // 3. SELEZIONE PIANO
-            else if (object.name === "PlaneAlpha") {
-                toggleGlowPlane(true);
-                updateInfoCard("Piano α Selezionato", 
-                    "Il piano contiene tutti gli elementi disegnati. Punti e rette giacciono su di esso.");
-            }
-        }
-
-        // --- GESTIONE EVENTI MOUSE / TOUCH ---
-        function setupEventListeners() {
-            window.addEventListener('resize', onWindowResize);
-
-            const canvas = renderer.domElement;
-            
-            // Pointer Down per Interazione
-            canvas.addEventListener('pointerdown', onPointerDown);
-
-            // Pulsanti dell'Interfaccia Utente (UI)
-            document.getElementById('btn-select').addEventListener('click', () => setMode('select'));
-            document.getElementById('btn-add-point').addEventListener('click', () => setMode('add-point'));
-            document.getElementById('btn-add-line').addEventListener('click', () => setMode('add-line'));
-            
-            document.getElementById('btn-clear').addEventListener('click', clearAllScene);
-
-            // Slider Densità
-            const densitySlider = document.getElementById('slider-density');
-            densitySlider.addEventListener('input', (e) => {
-                const val = e.target.value;
-                document.getElementById('density-val').innerText = val;
-                linesList.forEach(l => updateLinePointsDensity(l, parseInt(val)));
-            });
-
-            // Toggle visibilità piano
-            document.getElementById('btn-toggle-plane').addEventListener('click', () => {
-                planeMesh.visible = !planeMesh.visible;
-                planeGrid.visible = planeMesh.visible;
-                const badge = document.getElementById('plane-status-badge');
-                badge.innerText = planeMesh.visible ? "SI" : "NO";
-                badge.className = planeMesh.visible 
-                    ? "px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                    : "px-2 py-0.5 rounded text-[10px] bg-slate-500/20 text-slate-400 border border-slate-500/30";
-            });
-        }
-
-        function setMode(mode) {
-            currentMode = mode;
-            selectedPointsForLine = [];
-
-            // Reset classi attive bottone UI
-            ['btn-select', 'btn-add-point', 'btn-add-line'].forEach(id => {
-                document.getElementById(id).classList.remove('active');
-            });
-
-            if (mode === 'select') {
-                document.getElementById('btn-select').classList.add('active');
-                showToast("Modalità Ispezione: Clicca su punti o rette per illuminarli!");
-            } else if (mode === 'add-point') {
-                document.getElementById('btn-add-point').classList.add('active');
-                showToast("Fai click sul piano per aggiungere un nuovo Punto.");
-            } else if (mode === 'add-line') {
-                document.getElementById('btn-add-line').classList.add('active');
-                showToast("Seleziona DUE punti per tracciare una Retta passante per essi.");
-            }
-        }
-
-        function onPointerDown(event) {
-            // Calcolo coordinate pointer standardizzate (-1 to +1)
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            raycaster.setFromCamera(mouse, camera);
-
-            if (currentMode === 'select') {
-                // Intersetta oggetti selezionabili
-                const clickableObjects = [...pointsList.map(p => p.mesh), ...linesList.map(l => l.mesh), planeMesh];
-                const intersects = raycaster.intersectObjects(clickableObjects, false);
-
-                if (intersects.length > 0) {
-                    handleObjectSelection(intersects[0].object);
-                } else {
-                    handleObjectSelection(null);
-                }
-            } 
-            else if (currentMode === 'add-point') {
-                const intersects = raycaster.intersectObject(planeMesh);
-                if (intersects.length > 0) {
-                    const pt = intersects[0].point;
-                    const newPt = addPoint(pt.x, pt.z);
-                    showToast(`Punto ${newPt.name} creato sul piano α!`);
-                }
-            } 
-            else if (currentMode === 'add-line') {
-                const pointMeshes = pointsList.map(p => p.mesh);
-                const intersects = raycaster.intersectObjects(pointMeshes);
-
-                if (intersects.length > 0) {
-                    const clickedPointObj = intersects[0].object.userData.refObj;
-
-                    // Evita di selezionare lo stesso punto due volte
-                    if (!selectedPointsForLine.includes(clickedPointObj)) {
-                        selectedPointsForLine.push(clickedPointObj);
-                        toggleGlowPoint(clickedPointObj, true);
-
-                        if (selectedPointsForLine.length === 1) {
-                            showToast(`Primo punto (${clickedPointObj.name}) selezionato. Ora clicca il secondo punto.`);
-                        } else if (selectedPointsForLine.length === 2) {
-                            const newLine = createLineBetweenPoints(selectedPointsForLine[0], selectedPointsForLine[1]);
-                            showToast(`Retta ${newLine.name} tracciata per i punti ${selectedPointsForLine[0].name} e ${selectedPointsForLine[1].name}!`);
-                            
-                            // Reset selezione linea e modalità
-                            setTimeout(() => {
-                                setMode('select');
-                                handleObjectSelection(newLine.mesh);
-                            }, 500);
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            50: '#f0fdfa',
+                            500: '#14b8a6',
+                            900: '#042f2e',
+                            dark: '#080c14',
+                            card: '#0f172a',
                         }
                     }
                 }
             }
         }
+    </script>
+    <!-- FontAwesome per Icone -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-        function clearAllScene() {
-            // Rimuovi punti
-            pointsList.forEach(p => scene.remove(p.mesh));
-            pointsList = [];
-
-            // Rimuovi rette
-            linesList.forEach(l => scene.remove(l.mesh));
-            linesList = [];
-
-            pointCounter = 0;
-            lineCounter = 0;
-            resetAllGlows();
-
-            showToast("Scena ripulita! Puoi ricominciare da capo.");
-            updateInfoCard("Spazio Geometrico Vuoto", "Usa i pulsanti in basso per aggiungere nuovi punti e rette.");
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #080d1a;
+            color: #e2e8f0;
         }
 
-        // --- AGGIORNAMENTO UI & MESSAGGI ---
-        function updateInfoCard(title, description) {
-            document.getElementById('info-title').innerHTML = title;
-            document.getElementById('info-desc').innerHTML = description;
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
         }
 
-        let toastTimer = null;
-        function showToast(msg) {
-            const toast = document.getElementById('toast-msg');
-            document.getElementById('toast-text').innerText = msg;
-            toast.style.opacity = '1';
-
-            if (toastTimer) clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => {
-                toast.style.opacity = '0';
-            }, 4000);
+        /* Effetti Glow & Gradienti */
+        .neon-glow-cyan {
+            text-shadow: 0 0 15px rgba(56, 189, 248, 0.6), 0 0 30px rgba(56, 189, 248, 0.3);
         }
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        .neon-card {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.5) 100%);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        // --- LOOP DI ANIMAZIONE 3D ---
-        function animate() {
-            requestAnimationFrame(animate);
+        .neon-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(56, 189, 248, 0.5);
+            box-shadow: 0 20px 40px -15px rgba(56, 189, 248, 0.25), 0 0 25px -5px rgba(56, 189, 248, 0.15);
+        }
 
-            // Effetto rotazione/fluttuazione leggera degli aloni di luce per dinamismo
-            const time = Date.now() * 0.002;
-            pointsList.forEach(pt => {
-                if (pt.isGlowing) {
-                    pt.glowMesh.scale.setScalar(1 + Math.sin(time * 3) * 0.1);
-                }
+        .glow-button {
+            transition: all 0.25s ease;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.35);
+        }
+
+        .glow-button:hover {
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.6);
+            transform: translateY(-2px);
+        }
+
+        /* Subtle animated background grid */
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-grid selection:bg-cyan-500 selection:text-white">
+
+    <!-- Navbar -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-950/70 border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xl shadow-lg shadow-cyan-500/20 border border-cyan-400/30">
+                    <i class="fa-solid fa-shapes"></i>
+                </div>
+                <div>
+                    <a href="index.html" class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        Canvas Didattici
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Lab</span>
+                    </a>
+                    <p class="text-xs text-slate-400">Scienze & Matematica Interattiva</p>
+                </div>
+            </div>
+
+            <nav class="flex items-center gap-3 sm:gap-6">
+                <a href="#simulazioni" class="text-sm font-medium text-slate-300 hover:text-cyan-400 transition-colors hidden sm:block">
+                    Simulazioni
+                </a>
+                <a href="#come-aggiungere" class="text-sm font-medium text-slate-300 hover:text-cyan-400 transition-colors hidden sm:block">
+                    Come Aggiungerne
+                </a>
+                <a href="https://github.com/galassopartecipanteai-svg/canvas-didattici" target="_blank" rel="noopener noreferrer" 
+                   class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white text-sm font-medium border border-slate-700 transition-all">
+                    <i class="fa-brands fa-github text-lg"></i>
+                    <span>Repository</span>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative pt-12 pb-16 overflow-hidden">
+        <!-- Glow Orbs di sfondo -->
+        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-cyan-500/15 via-blue-600/10 to-purple-600/15 rounded-full blur-3xl pointer-events-none -z-10"></div>
+
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 text-xs sm:text-sm font-medium mb-6">
+                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                <span>Laboratorio Didattico Interattivo • Open Source</span>
+            </div>
+
+            <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+                Esplora la Scienza e la Matematica con i <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-blue-500 neon-glow-cyan">Canvas 3D</span>
+            </h1>
+
+            <p class="text-base sm:text-xl text-slate-300 max-w-3xl mx-auto mb-10 leading-relaxed font-normal">
+                Una raccolta di simulazioni interattive pensate per l'insegnamento e l'apprendimento visivo.
+                Manipola lo spazio, sperimenta con parametri reali e comprendi i concetti fondamentali in modo diretto e intuitivo.
+            </p>
+
+            <!-- Pills delle caratteristiche -->
+            <div class="flex flex-wrap justify-center gap-3 text-xs sm:text-sm">
+                <div class="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 flex items-center gap-2">
+                    <i class="fa-solid fa-cube text-cyan-400"></i>
+                    <span>Grafica 3D con Three.js</span>
+                </div>
+                <div class="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+                    <span>Esperimenti in Tempo Reale</span>
+                </div>
+                <div class="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 flex items-center gap-2">
+                    <i class="fa-solid fa-cloud-arrow-up text-emerald-400"></i>
+                    <span>Pronto per GitHub Pages</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content / Simulations Grid -->
+    <main id="simulazioni" class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 w-full">
+        
+        <!-- Intestazione Sezione & Filtri -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-10 pb-4 border-b border-slate-800">
+            <div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+                    <i class="fa-solid fa-layer-group text-cyan-400"></i>
+                    Simulazioni Disponibili
+                </h2>
+                <p class="text-sm text-slate-400 mt-1">Scegli una simulazione per aprirla ed esplorare l'ambiente interattivo</p>
+            </div>
+
+            <!-- Filtri Categorie -->
+            <div class="flex items-center gap-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 text-xs font-medium">
+                <button onclick="filterCategory('all')" id="btn-filter-all" class="filter-btn active px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 transition-all">
+                    Tutte (<span id="count-all">3</span>)
+                </button>
+                <button onclick="filterCategory('geometria')" id="btn-filter-geometria" class="filter-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all">
+                    Geometria
+                </button>
+                <button onclick="filterCategory('fisica')" id="btn-filter-fisica" class="filter-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all">
+                    Fisica
+                </button>
+            </div>
+        </div>
+
+        <!-- Griglia Cards Simulazioni -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+
+            <!-- CARD 1: Geometria Neon (ATTIVA) -->
+            <article class="sim-card neon-card rounded-3xl overflow-hidden flex flex-col group border border-cyan-500/30" data-category="geometria">
+                <!-- Preview Visual / Header Card -->
+                <div class="relative h-52 bg-gradient-to-br from-slate-900 via-slate-950 to-cyan-950/40 p-6 flex flex-col justify-between overflow-hidden border-b border-slate-800/80">
+                    <!-- Glow decorativo interno -->
+                    <div class="absolute -right-8 -top-8 w-40 h-40 bg-cyan-500/20 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500"></div>
+
+                    <!-- Badge di stato -->
+                    <div class="flex items-center justify-between z-10">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            Disponibile Ora
+                        </span>
+                        <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-800/80 text-cyan-300 border border-slate-700 font-mono">
+                            3D WebGL
+                        </span>
+                    </div>
+
+                    <!-- Icona / Grafica 3D stilizzata -->
+                    <div class="flex items-center gap-4 z-10 mt-auto">
+                        <div class="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-400/40 flex items-center justify-center text-cyan-300 text-2xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-cubes-stacked"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs font-semibold uppercase tracking-wider text-cyan-400">Matematica & Geometria</span>
+                            <h3 class="text-xl font-bold text-white group-hover:text-cyan-300 transition-colors">
+                                Geometria Neon
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Corpo Card -->
+                <div class="p-6 flex flex-col flex-grow justify-between bg-slate-900/50">
+                    <div>
+                        <h4 class="text-base font-semibold text-slate-100 mb-2">Enti Fondamentali: Punto, Retta, Piano</h4>
+                        <p class="text-sm text-slate-300 leading-relaxed mb-6">
+                            Esplora lo spazio tridimensionale interattivo. Posiziona punti dinamici, traccia rette luminose tra due punti e manipola il piano euclideo con illuminazione neon.
+                        </p>
+
+                        <!-- Tag Tecnologie / Competenze -->
+                        <div class="flex flex-wrap gap-2 mb-6">
+                            <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">Three.js</span>
+                            <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">OrbitControls</span>
+                            <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">Postulati di Euclide</span>
+                        </div>
+                    </div>
+
+                    <!-- Pulsante Avvia -->
+                    <a href="geometria_neon_enti_fondamentali.html" 
+                       class="glow-button w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-sm transition-all">
+                        <span>Avvia Simulazione 3D</span>
+                        <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </a>
+                </div>
+            </article>
+
+            <!-- CARD 2: Ottica Geometrica (PROSSIMAMENTE) -->
+            <article class="sim-card neon-card rounded-3xl overflow-hidden flex flex-col opacity-85 hover:opacity-100 border border-slate-800" data-category="fisica">
+                <div class="relative h-52 bg-gradient-to-br from-slate-900 via-slate-950 to-amber-950/30 p-6 flex flex-col justify-between overflow-hidden border-b border-slate-800/80">
+                    <div class="flex items-center justify-between z-10">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                            Prossimamente
+                        </span>
+                        <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-800/80 text-amber-300 border border-slate-700 font-mono">
+                            Ottica 2D/3D
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-4 z-10 mt-auto">
+                        <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-400/30 flex items-center justify-center text-amber-300 text-2xl">
+                            <i class="fa-solid fa-sun"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs font-semibold uppercase tracking-wider text-amber-400">Fisica</span>
+                            <h3 class="text-xl font-bold text-white">Riflessione & Ottica</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 flex flex-col flex-grow justify-between bg-slate-900/50">
+                    <div>
+                        <h4 class="text-base font-semibold text-slate-100 mb-2">Leggi della Riflessione e Specchi</h4>
+                        <p class="text-sm text-slate-300 leading-relaxed mb-6">
+                            Laboratorio per visualizzare raggi incidenti, raggi riflessi, calcolo della normale e riflessione su superfici speculari piane e sferiche.
+                        </p>
+                        <div class="flex flex-wrap gap-2 mb-6">
+                            <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700">Raggi di Luce</span>
+                            <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700">Legge di Snell</span>
+                        </div>
+                    </div>
+
+                    <div class="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-slate-800/60 border border-slate-700 text-slate-400 font-medium text-sm cursor-not-allowed">
+                        <i class="fa-solid fa-wrench text-xs text-amber-400"></i>
+                        <span>In fase di sviluppo</span>
+                    </div>
+                </div>
+            </article>
+
+            <!-- CARD 3: Piano Cartesiano & Funzioni (PROSSIMAMENTE) -->
+            <article class="sim-card neon-card rounded-3xl overflow-hidden flex flex-col opacity-85 hover:opacity-100 border border-slate-800" data-category="geometria">
+                <div class="relative h-52 bg-gradient-to-br from-slate-900 via-slate-950 to-purple-950/30 p-6 flex flex-col justify-between overflow-hidden border-b border-slate-800/80">
+                    <div class="flex items-center justify-between z-10">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/30">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                            Prossimamente
+                        </span>
+                        <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-800/80 text-purple-300 border border-slate-700 font-mono">
+                            Grafici Dinamici
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-4 z-10 mt-auto">
+                        <div class="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-400/30 flex items-center justify-center text-purple-300 text-2xl">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs font-semibold uppercase tracking-wider text-purple-400">Analisi Matematica</span>
+                            <h3 class="text-xl font-bold text-white">Funzioni Dinamiche</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 flex flex-col flex-grow justify-between bg-slate-900/50">
+                    <div>
+                        <h4 class="text-base font-semibold text-slate-100 mb-2">Grafici e Trasformazioni Parametriche</h4>
+                        <p class="text-sm text-slate-300 leading-relaxed mb-6">
+                            Esplora graficamente rette, parabole ed equazioni trigonometriche regolando coefficienti angolari, termini noti e parametri tramite slider interattivi.
+                        </p>
+                        <div class="flex flex-wrap gap-2 mb-6">
+                            <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700">Piano Cartesiano</span>
+                            <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700">Parametri Live</span>
+                        </div>
+                    </div>
+
+                    <div class="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-slate-800/60 border border-slate-700 text-slate-400 font-medium text-sm cursor-not-allowed">
+                        <i class="fa-solid fa-wrench text-xs text-purple-400"></i>
+                        <span>In fase di sviluppo</span>
+                    </div>
+                </div>
+            </article>
+
+            <!-- CARD 4: Aggiungi Nuova Simulazione (Box tratteggiato) -->
+            <article class="rounded-3xl border-2 border-dashed border-slate-700/80 hover:border-cyan-500/60 p-8 flex flex-col items-center justify-center text-center bg-slate-900/20 hover:bg-slate-900/40 transition-all group min-h-[380px]">
+                <div class="w-16 h-16 rounded-3xl bg-slate-800/80 group-hover:bg-cyan-500/20 text-slate-400 group-hover:text-cyan-300 border border-slate-700 group-hover:border-cyan-400/40 flex items-center justify-center text-2xl mb-4 transition-all shadow-inner">
+                    <i class="fa-solid fa-plus group-hover:rotate-90 transition-transform duration-300"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2 group-hover:text-cyan-300 transition-colors">
+                    Aggiungi Nuova Simulazione
+                </h3>
+                <p class="text-sm text-slate-400 max-w-xs mb-6">
+                    Hai un nuovo file HTML creato con Gemini o altri strumenti? Aggiungerlo alla raccolta richiede pochi secondi.
+                </p>
+                <a href="#come-aggiungere" class="inline-flex items-center gap-2 text-xs font-semibold text-cyan-400 hover:text-cyan-300 px-4 py-2 rounded-xl bg-cyan-950/50 border border-cyan-500/30 hover:border-cyan-500/60 transition-all">
+                    <span>Guarda come fare</span>
+                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                </a>
+            </article>
+
+        </div>
+    </main>
+
+    <!-- Sezione Informativa: Come Aggiungere Nuove Simulazioni -->
+    <section id="come-aggiungere" class="bg-slate-900/60 border-t border-slate-800/80 py-16">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <span class="text-xs font-semibold uppercase tracking-wider text-cyan-400 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/30">
+                    Guida Pratica
+                </span>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white mt-3">Come aggiungere nuove simulazioni</h2>
+                <p class="text-sm text-slate-400 mt-2">
+                    L'architettura del repository è studiata per permetterti di espandere la raccolta in qualsiasi momento.
+                </p>
+            </div>
+
+            <!-- Passi 1, 2, 3 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                <div class="p-6 rounded-2xl bg-slate-950/60 border border-slate-800">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center mb-4 border border-cyan-500/30">
+                        1
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-2">Salva il file HTML</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Salva il nuovo file generato da Gemini nella cartella del progetto (ad esempio: <code class="text-cyan-300 font-mono">nuova_simulazione.html</code>).
+                    </p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-slate-950/60 border border-slate-800">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center mb-4 border border-cyan-500/30">
+                        2
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-2">Aggiungi la Card</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        In questo file <code class="text-cyan-300 font-mono">index.html</code>, duplica uno dei blocchi <code class="text-slate-300 font-mono">&lt;article&gt;</code> inserendo il titolo e il link al nuovo file.
+                    </p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-slate-950/60 border border-slate-800">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center mb-4 border border-cyan-500/30">
+                        3
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-2">Push su GitHub</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Esegui il commit e push del progetto: GitHub Pages aggiornerà automaticamente il sito online in 60 secondi!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Box Snippet Codice per la nuova card -->
+            <div class="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-2xl">
+                <div class="px-5 py-3 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
+                    <span class="text-xs font-mono text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-code text-cyan-400"></i>
+                        Snippet per nuova card (da copiare in index.html)
+                    </span>
+                    <span class="text-[10px] text-slate-500 font-mono">HTML</span>
+                </div>
+                <pre class="p-5 text-xs text-cyan-200 code-font overflow-x-auto leading-relaxed"><code>&lt;!-- Esempio nuova card --&gt;
+&lt;article class="sim-card neon-card rounded-3xl overflow-hidden flex flex-col" data-category="fisica"&gt;
+    &lt;div class="p-6 flex flex-col flex-grow justify-between"&gt;
+        &lt;h3 class="text-xl font-bold text-white mb-2"&gt;Titolo Simulazione&lt;/h3&gt;
+        &lt;p class="text-sm text-slate-300 mb-6"&gt;Descrizione della nuova simulazione.&lt;/p&gt;
+        &lt;a href="nome_file_creato_da_gemini.html" class="glow-button px-6 py-3 rounded-2xl bg-cyan-600 text-white font-semibold text-center"&gt;
+            Avvia Simulazione
+        &lt;/a&gt;
+    &lt;/div&gt;
+&lt;/article&gt;</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 border-t border-slate-900 py-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs">
+                    <i class="fa-solid fa-shapes"></i>
+                </div>
+                <span><b>Canvas Didattici</b> — Laboratorio Interattivo</span>
+            </div>
+            <div class="text-center sm:text-right">
+                <p>Corsi d'aggiornamento 2026-2027 • Agenti IA per la Didattica</p>
+                <p class="text-slate-500 mt-1">A cura di Nicola Galasso (<a href="https://github.com/galassopartecipanteai-svg" target="_blank" class="hover:text-cyan-400 underline decoration-slate-700">@galassopartecipanteai-svg</a>)</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Script per filtraggio categorie -->
+    <script>
+        function filterCategory(category) {
+            const cards = document.querySelectorAll('.sim-card');
+            const buttons = document.querySelectorAll('.filter-btn');
+
+            buttons.forEach(btn => {
+                btn.classList.remove('active', 'bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/40');
+                btn.classList.add('text-slate-400');
             });
 
-            controls.update();
-            renderer.render(scene, camera);
+            const activeBtn = document.getElementById('btn-filter-' + category);
+            if (activeBtn) {
+                activeBtn.classList.add('active', 'bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/40');
+                activeBtn.classList.remove('text-slate-400');
+            }
+
+            cards.forEach(card => {
+                if (category === 'all' || card.getAttribute('data-category') === category) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
         }
     </script>
 </body>
